@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # Build stage
 FROM golang:1.23.4-alpine3.20 AS builder
 
@@ -30,12 +28,6 @@ FROM busybox:1.36.1 AS healthcheck-tools
 
 # Runtime stage
 FROM gcr.io/distroless/static-debian12:nonroot
-
-# Add labels for metadata
-LABEL org.opencontainers.image.title="LSV HBYS Service" \
-      org.opencontainers.image.description="Bridge service to HBYS (MSSQL) with appointment APIs" \
-      org.opencontainers.image.vendor="LSV" \
-      org.opencontainers.image.source="https://github.com/berkecengiz/appointment-service-boilerplate"
 
 WORKDIR /app
 
