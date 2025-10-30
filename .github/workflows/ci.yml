@@ -50,7 +50,7 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
             -ldflags="-w -s" \
             -o hbys \
-            github.com/berkecengiz/appointment-service-boilerplate/cmd/server
+            ./cmd/server
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -99,7 +99,7 @@ jobs:
           file: ./Dockerfile
           push: false
           tags: |
-            lsv-hbys-service:${{ github.sha }}
-            lsv-hbys-service:latest
+            appointment-service-boilerplate:${{ github.sha }}
+            appointment-service-boilerplate:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
