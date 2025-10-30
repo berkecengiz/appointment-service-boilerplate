@@ -57,6 +57,19 @@ curl -H "X-API-Key: demo" \
 - Regenerate docs after handler/model changes: `$(go env GOPATH)/bin/swag init -g cmd/server/main.go -o docs`
 - Browse Swagger UI at `http://localhost:8080/swagger/index.html`
 
+### Make Targets
+
+```bash
+make build            # compile binaries
+make test             # run unit tests
+make fmt              # gofmt cmd/ and internal/
+make swagger          # regenerate docs (depends on swag)
+make run              # start the server locally
+make compose-up       # start Podman services in background
+make compose-logs     # follow Podman service logs
+make compose-down     # stop Podman services and remove containers
+```
+
 ## Configuration
 
 Required variables in `.env`:
