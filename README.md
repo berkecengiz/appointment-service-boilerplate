@@ -55,6 +55,7 @@ curl -H "X-API-Key: demo" \
 
 Required variables in `.env`:
 - `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DB`
+- `PG_HOST_DOCKER` (host name for the app container to reach Postgres, defaults to `postgres`)
 - `API_KEYS` (comma-separated `service:key` pairs)
 
 Optional:

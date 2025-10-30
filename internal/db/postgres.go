@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/config"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // NewPostgres creates a Postgres connection pool using configuration values and validates the connection.

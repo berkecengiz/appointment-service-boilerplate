@@ -56,7 +56,6 @@ func (s *AppointmentService) ListAppointments(ctx context.Context, f models.Appo
 			conditions = append(conditions, fmt.Sprintf("StartTime >= $%d AND StartTime < $%d", argIndex, argIndex+1))
 			args = append(args, start)
 			args = append(args, end)
-			argIndex += 2
 		}
 	}
 

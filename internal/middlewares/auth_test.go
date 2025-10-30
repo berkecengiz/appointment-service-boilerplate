@@ -16,7 +16,9 @@ func TestAPIKeyMiddleware_ValidKey(t *testing.T) {
 
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		if _, err := w.Write([]byte("success")); err != nil {
+			t.Fatalf("write response: %v", err)
+		}
 	}))
 
 	req := httptest.NewRequest("GET", "/test", nil)

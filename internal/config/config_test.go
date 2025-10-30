@@ -112,18 +112,18 @@ func TestLoad_InvalidServerPort(t *testing.T) {
 }
 
 func TestLoad_InvalidServerPortRange(t *testing.T) {
-    os.Setenv("API_KEYS", "service1:key1")
-    os.Setenv("PG_HOST", "localhost")
-    os.Setenv("PG_USER", "testuser")
-    os.Setenv("PG_PASSWORD", "testpass")
-    os.Setenv("PG_DB", "testdb")
-    os.Setenv("SERVER_PORT", "70000")
-    defer cleanupEnv()
+	os.Setenv("API_KEYS", "service1:key1")
+	os.Setenv("PG_HOST", "localhost")
+	os.Setenv("PG_USER", "testuser")
+	os.Setenv("PG_PASSWORD", "testpass")
+	os.Setenv("PG_DB", "testdb")
+	os.Setenv("SERVER_PORT", "70000")
+	defer cleanupEnv()
 
-    _, err := Load()
+	_, err := Load()
 
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "SERVER_PORT")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "SERVER_PORT")
 }
 
 func TestLoad_InvalidMSSQLPort(t *testing.T) {
@@ -142,18 +142,18 @@ func TestLoad_InvalidMSSQLPort(t *testing.T) {
 }
 
 func TestLoad_InvalidLogLevel(t *testing.T) {
-    os.Setenv("API_KEYS", "service1:key1")
-    os.Setenv("PG_HOST", "localhost")
-    os.Setenv("PG_USER", "testuser")
-    os.Setenv("PG_PASSWORD", "testpass")
-    os.Setenv("PG_DB", "testdb")
-    os.Setenv("LOG_LEVEL", "invalid")
-    defer cleanupEnv()
+	os.Setenv("API_KEYS", "service1:key1")
+	os.Setenv("PG_HOST", "localhost")
+	os.Setenv("PG_USER", "testuser")
+	os.Setenv("PG_PASSWORD", "testpass")
+	os.Setenv("PG_DB", "testdb")
+	os.Setenv("LOG_LEVEL", "invalid")
+	defer cleanupEnv()
 
-    _, err := Load()
+	_, err := Load()
 
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "LOG_LEVEL")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "LOG_LEVEL")
 }
 
 func TestLoad_DefaultValues(t *testing.T) {

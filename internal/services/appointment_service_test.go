@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
 )
 
 func TestListAppointments_FilterByCustomerID(t *testing.T) {

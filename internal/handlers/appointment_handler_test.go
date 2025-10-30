@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
-	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
 )
 
 // MockAppointmentService is a mock implementation of AppointmentService interface

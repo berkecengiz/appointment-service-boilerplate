@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/httputil"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/go-chi/chi/v5"
 )
 
 // AppointmentHandler handles HTTP requests for appointment operations.
