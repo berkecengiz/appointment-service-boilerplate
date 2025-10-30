@@ -1,0 +1,73 @@
+services:
+  app:
+    build: .
+    image: hms-service:latest
+    container_name: hms-service
+    environment:
+      # Server Configuration
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Database Configuration (Postgres)
+      - PG_HOST=${PG_HOST}
+      - PG_PORT=${PG_PORT:-5432}
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DB=${PG_DB}
+      - PG_SSLMODE=${PG_SSLMODE:-disable}
+      
+      # API Authentication
+      - API_KEYS=${API_KEYS}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    restart: unless-stopped
+    
+    # Health check configuration
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # Optional Postgres service for local/dev
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DB}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:
+

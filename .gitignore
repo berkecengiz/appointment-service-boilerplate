@@ -1,0 +1,44 @@
+# Binaries
+hbys
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Build artifacts
+bin/
+build/
+dist/
+tmp/
+.cache/
+
+# Coverage
+*.out
+coverage*
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE/editor
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker/Podman local data (if any)
+docker-data/
+
+.cursor/
