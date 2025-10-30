@@ -43,6 +43,7 @@ podman compose down
 ### Appointments (requires `X-API-Key`)
 - `GET /appointments?date=YYYY-MM-DD&client_id=&provider_id=&branch=`
 - `GET /appointments/{id}`
+- `POST /appointments/{id}/cancel`
 - `POST /appointments`
 
 ### Clients (requires `X-API-Key`)

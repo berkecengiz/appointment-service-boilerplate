@@ -55,3 +55,9 @@ type CreateAppointmentRequest struct {
 	// Notes optionally contains additional information about the appointment.
 	Notes *string `json:"notes,omitempty"`
 }
+
+// CancelAppointmentRequest defines the request body for cancelling an appointment.
+type CancelAppointmentRequest struct {
+	// ClientID ensures only the owner of the appointment can cancel it.
+	ClientID string `json:"client_id"`
+}

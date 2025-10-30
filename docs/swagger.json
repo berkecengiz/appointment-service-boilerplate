@@ -187,6 +187,82 @@
                 }
             }
         },
+        "/appointments/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Cancels an existing appointment owned by the requesting client.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Cancel appointment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Cancel payload",
+                        "name": "cancel",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CancelAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Appointment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/clients": {
             "get": {
                 "security": [
@@ -555,6 +631,15 @@
                 },
                 "status": {
                     "description": "Status represents the current status of the appointment (e.g., scheduled, cancelled).",
+                    "type": "string"
+                }
+            }
+        },
+        "models.CancelAppointmentRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "description": "ClientID ensures only the owner of the appointment can cancel it.",
                     "type": "string"
                 }
             }

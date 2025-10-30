@@ -36,6 +36,13 @@ definitions:
           scheduled, cancelled).
         type: string
     type: object
+  models.CancelAppointmentRequest:
+    properties:
+      client_id:
+        description: ClientID ensures only the owner of the appointment can cancel
+          it.
+        type: string
+    type: object
   models.Client:
     properties:
       address:
@@ -233,6 +240,55 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get appointment by ID
+      tags:
+      - appointments
+  /appointments/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancels an existing appointment owned by the requesting client.
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cancel payload
+        in: body
+        name: cancel
+        required: true
+        schema:
+          $ref: '#/definitions/models.CancelAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Appointment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Cancel appointment
       tags:
       - appointments
   /clients:

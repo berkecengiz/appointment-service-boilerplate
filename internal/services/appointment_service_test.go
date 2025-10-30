@@ -513,3 +513,123 @@ func TestCreateAppointment_CommitFailure(t *testing.T) {
 	assert.Nil(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestCancelAppointment_Success(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(rows)
+	mock.ExpectExec("UPDATE").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	req := models.CancelAppointmentRequest{ClientID: "client123"}
+
+	result, err := svc.CancelAppointment(ctx, "appt123", req)
+
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "appt123", result.ID)
+	assert.Equal(t, "cancelled", result.Status)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCancelAppointment_NotFound(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectRollback()
+
+	_, err := svc.CancelAppointment(ctx, "missing", models.CancelAppointmentRequest{ClientID: "client123"})
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrAppointmentNotFound)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCancelAppointment_Forbidden(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "other-client", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(rows)
+	mock.ExpectRollback()
+
+	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrAppointmentForbidden)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCancelAppointment_AlreadyCancelled(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "cancelled", nil)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(rows)
+	mock.ExpectRollback()
+
+	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrAppointmentAlreadyCancelled)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCancelAppointment_UpdateFailure(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(rows)
+	mock.ExpectExec("UPDATE").
+		WillReturnError(errors.New("update failed"))
+	mock.ExpectRollback()
+
+	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cancel appointment")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCancelAppointment_SelectFailure(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnError(errors.New("select failed"))
+	mock.ExpectRollback()
+
+	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cancel appointment")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

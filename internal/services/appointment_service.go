@@ -18,9 +18,16 @@ type AppointmentService struct {
 }
 
 // ErrAppointmentConflict indicates the requested slot overlaps an existing appointment.
+const (
+	statusCancelled = "cancelled"
+)
+
 var (
-	ErrAppointmentConflict = errors.New("appointment overlaps with existing booking")
-	ErrClientAlreadyBooked = errors.New("client already has an appointment on this date")
+	ErrAppointmentConflict         = errors.New("appointment overlaps with existing booking")
+	ErrClientAlreadyBooked         = errors.New("client already has an appointment on this date")
+	ErrAppointmentNotFound         = errors.New("appointment not found")
+	ErrAppointmentAlreadyCancelled = errors.New("appointment already cancelled")
+	ErrAppointmentForbidden        = errors.New("appointment not owned by client")
 )
 
 // NewAppointmentService creates a new appointment service with the given database connection.
@@ -156,6 +163,53 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	return &appointment, nil
+}
+
+// CancelAppointment marks an appointment as cancelled if it belongs to the requesting client.
+func (s *AppointmentService) CancelAppointment(ctx context.Context, id string, req models.CancelAppointmentRequest) (*models.Appointment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var appointment models.Appointment
+
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if err := tx.NewSelect().Model(&appointment).Where("id = ?", id).For("UPDATE").Scan(ctx); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrAppointmentNotFound
+			}
+			return fmt.Errorf("query appointment for cancel: %w", err)
+		}
+
+		if appointment.ClientID != req.ClientID {
+			return ErrAppointmentForbidden
+		}
+
+		if appointment.Status == statusCancelled {
+			return ErrAppointmentAlreadyCancelled
+		}
+
+		appointment.Status = statusCancelled
+
+		if _, err := tx.NewUpdate().Model(&appointment).
+			Column("status").
+			Where("id = ?", id).
+			Exec(ctx); err != nil {
+			return fmt.Errorf("update appointment status: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		if errors.Is(err, ErrAppointmentNotFound) ||
+			errors.Is(err, ErrAppointmentForbidden) ||
+			errors.Is(err, ErrAppointmentAlreadyCancelled) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("cancel appointment: %w", err)
 	}
 
 	return &appointment, nil

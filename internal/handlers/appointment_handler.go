@@ -135,3 +135,51 @@ func (h *AppointmentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	httputil.JSON(w, http.StatusCreated, a)
 }
+
+// Cancel godoc
+// @Summary Cancel appointment
+// @Description Cancels an existing appointment owned by the requesting client.
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path string true "Appointment ID"
+// @Param cancel body models.CancelAppointmentRequest true "Cancel payload"
+// @Success 200 {object} models.Appointment
+// @Failure 400 {object} httputil.ErrorResponse
+// @Failure 403 {object} httputil.ErrorResponse
+// @Failure 404 {object} httputil.ErrorResponse
+// @Failure 409 {object} httputil.ErrorResponse
+// @Failure 500 {object} httputil.ErrorResponse
+// @Security ApiKeyAuth
+// @Router /appointments/{id}/cancel [post]
+// Cancel handles POST /appointments/{id}/cancel and marks an appointment as cancelled.
+func (h *AppointmentHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var req models.CancelAppointmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.Error(r.Context(), w, http.StatusBadRequest, "invalid request body", err)
+		return
+	}
+	if req.ClientID == "" {
+		httputil.Error(r.Context(), w, http.StatusBadRequest, "client_id is required", nil)
+		return
+	}
+
+	appointment, err := h.svc.CancelAppointment(r.Context(), id, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrAppointmentNotFound):
+			httputil.Error(r.Context(), w, http.StatusNotFound, "appointment not found", err)
+		case errors.Is(err, services.ErrAppointmentForbidden):
+			httputil.Error(r.Context(), w, http.StatusForbidden, "appointment not owned by client", err)
+		case errors.Is(err, services.ErrAppointmentAlreadyCancelled):
+			httputil.Error(r.Context(), w, http.StatusConflict, "appointment already cancelled", err)
+		default:
+			httputil.InternalError(r.Context(), w, err)
+		}
+		return
+	}
+
+	httputil.JSON(w, http.StatusOK, appointment)
+}

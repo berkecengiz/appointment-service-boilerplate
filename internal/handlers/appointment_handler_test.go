@@ -48,6 +48,14 @@ func (m *MockAppointmentService) CreateAppointment(ctx context.Context, req mode
 	return args.Get(0).(*models.Appointment), args.Error(1)
 }
 
+func (m *MockAppointmentService) CancelAppointment(ctx context.Context, id string, req models.CancelAppointmentRequest) (*models.Appointment, error) {
+	args := m.Called(ctx, id, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Appointment), args.Error(1)
+}
+
 func TestCreate_InvalidJSON(t *testing.T) {
 	handler := NewAppointmentHandler(services.NewAppointmentService(nil))
 
@@ -508,6 +516,183 @@ func TestGetByID_ServiceError(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	handler.GetByID(rr, httpReq)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "internal server error", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCancel_Success(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	now := time.Now()
+	expected := &models.Appointment{
+		ID:         "appt123",
+		ClientID:   "client123",
+		ProviderID: "provider456",
+		Branch:     "Main",
+		StartTime:  now,
+		EndTime:    now.Add(time.Hour),
+		Status:     "cancelled",
+	}
+
+	mockSvc.On("CancelAppointment", mock.Anything, "appt123", mock.MatchedBy(func(req models.CancelAppointmentRequest) bool {
+		return req.ClientID == "client123"
+	})).Return(expected, nil)
+
+	body := `{"client_id":"client123"}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var response models.Appointment
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "cancelled", response.Status)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCancel_InvalidJSON(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader("{"))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "CancelAppointment", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestCancel_MissingClientID(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	body := `{"client_id":""}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
+	mockSvc.AssertNotCalled(t, "CancelAppointment", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestCancel_NotFound(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	mockSvc.On("CancelAppointment", mock.Anything, "appt123", mock.AnythingOfType("models.CancelAppointmentRequest")).
+		Return(nil, services.ErrAppointmentNotFound)
+
+	body := `{"client_id":"client123"}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "appointment not found", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCancel_Forbidden(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	mockSvc.On("CancelAppointment", mock.Anything, "appt123", mock.AnythingOfType("models.CancelAppointmentRequest")).
+		Return(nil, services.ErrAppointmentForbidden)
+
+	body := `{"client_id":"client123"}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusForbidden, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "appointment not owned by client", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCancel_AlreadyCancelled(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	mockSvc.On("CancelAppointment", mock.Anything, "appt123", mock.AnythingOfType("models.CancelAppointmentRequest")).
+		Return(nil, services.ErrAppointmentAlreadyCancelled)
+
+	body := `{"client_id":"client123"}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
+
+	assert.Equal(t, http.StatusConflict, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "appointment already cancelled", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCancel_ServiceError(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	mockSvc.On("CancelAppointment", mock.Anything, "appt123", mock.AnythingOfType("models.CancelAppointmentRequest")).
+		Return(nil, errors.New("database error"))
+
+	body := `{"client_id":"client123"}`
+	httpReq := httptest.NewRequest("POST", "/appointments/appt123/cancel", strings.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "appt123")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+
+	handler.Cancel(rr, httpReq)
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 

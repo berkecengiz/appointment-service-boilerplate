@@ -51,6 +51,7 @@ func NewRouter(d Deps) *chi.Mux {
 		pr.Route("/appointments", func(ar chi.Router) {
 			ar.Get("/", d.AppointmentHandler.List)
 			ar.Post("/", d.AppointmentHandler.Create)
+			ar.Post("/{id}/cancel", d.AppointmentHandler.Cancel)
 			ar.Get("/{id}", d.AppointmentHandler.GetByID)
 		})
 
