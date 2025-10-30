@@ -19,6 +19,8 @@ const (
 
 type Deps struct {
 	AppointmentHandler *handlers.AppointmentHandler
+	ClientHandler      *handlers.ClientHandler
+	ProviderHandler    *handlers.ProviderHandler
 	HealthHandler      *handlers.HealthHandler
 	AuthMiddleware     func(http.Handler) http.Handler
 	RateLimiter        *middlewares.RateLimiter
@@ -50,6 +52,18 @@ func NewRouter(d Deps) *chi.Mux {
 			ar.Get("/", d.AppointmentHandler.List)
 			ar.Post("/", d.AppointmentHandler.Create)
 			ar.Get("/{id}", d.AppointmentHandler.GetByID)
+		})
+
+		pr.Route("/clients", func(cr chi.Router) {
+			cr.Get("/", d.ClientHandler.List)
+			cr.Post("/", d.ClientHandler.Create)
+			cr.Get("/{id}", d.ClientHandler.GetByID)
+		})
+
+		pr.Route("/providers", func(prr chi.Router) {
+			prr.Get("/", d.ProviderHandler.List)
+			prr.Post("/", d.ProviderHandler.Create)
+			prr.Get("/{id}", d.ProviderHandler.GetByID)
 		})
 	})
 

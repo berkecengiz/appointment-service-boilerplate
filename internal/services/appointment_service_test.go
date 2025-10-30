@@ -29,23 +29,23 @@ func newAppointmentServiceWithMock(t *testing.T) (*AppointmentService, sqlmock.S
 	return NewAppointmentService(bunDB), mock
 }
 
-func TestListAppointments_FilterByCustomerID(t *testing.T) {
+func TestListAppointments_FilterByClientID(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("1", "customer123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("1", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
 
-	filter := models.AppointmentFilter{CustomerID: "customer123"}
+	filter := models.AppointmentFilter{ClientID: "client123"}
 	result, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
-	assert.Equal(t, "customer123", result[0].CustomerID)
+	assert.Equal(t, "client123", result[0].ClientID)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -54,8 +54,8 @@ func TestListAppointments_FilterByProviderID(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("2", "customer999", "provider456", "West", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("2", "client999", "provider456", "West", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -74,8 +74,8 @@ func TestListAppointments_FilterByBranch(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("3", "customer111", "provider222", "East", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("3", "client111", "provider222", "East", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -94,8 +94,8 @@ func TestListAppointments_FilterByDate(t *testing.T) {
 	ctx := context.Background()
 
 	targetDate := time.Date(2025, 10, 20, 0, 0, 0, 0, time.UTC)
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("4", "customer555", "provider666", "North", targetDate, targetDate.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("4", "client555", "provider666", "North", targetDate, targetDate.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -112,7 +112,7 @@ func TestListAppointments_InvalidDateFormat(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -130,14 +130,14 @@ func TestListAppointments_MultipleFilters(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("5", "customer123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("5", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 	}
@@ -153,9 +153,9 @@ func TestListAppointments_NoFilters(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("6", "customer1", "provider1", "Main", now, now.Add(time.Hour), "scheduled", nil).
-		AddRow("7", "customer2", "provider2", "East", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("6", "client1", "provider1", "Main", now, now.Add(time.Hour), "scheduled", nil).
+		AddRow("7", "client2", "provider2", "East", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -188,8 +188,8 @@ func TestListAppointments_ScanError(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("1", "customer123", "provider456", "Main", "invalid", time.Now(), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("1", "client123", "provider456", "Main", "invalid", time.Now(), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -208,7 +208,7 @@ func TestListAppointments_EmptyResult(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -227,8 +227,8 @@ func TestListAppointments_WithNotes(t *testing.T) {
 
 	now := time.Now()
 	notes := "Important appointment"
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("8", "customer123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", notes)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("8", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", notes)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -249,8 +249,8 @@ func TestGetAppointmentByID_Success(t *testing.T) {
 
 	now := time.Now()
 	notes := "Test notes"
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("appt123", "customer456", "provider789", "Main", now, now.Add(time.Hour), "scheduled", notes)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client456", "provider789", "Main", now, now.Add(time.Hour), "scheduled", notes)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -260,7 +260,7 @@ func TestGetAppointmentByID_Success(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, "appt123", result.ID)
-	assert.Equal(t, "customer456", result.CustomerID)
+	assert.Equal(t, "client456", result.ClientID)
 	assert.Equal(t, "provider789", result.ProviderID)
 	assert.Equal(t, "Main", result.Branch)
 	assert.Equal(t, "scheduled", result.Status)
@@ -303,8 +303,8 @@ func TestGetAppointmentByID_WithoutNotes(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "customerid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("appt123", "customer456", "provider789", "Main", now, now.Add(time.Hour), "scheduled", nil)
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client456", "provider789", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
@@ -323,7 +323,7 @@ func TestCreateAppointment_SuccessWithNotes(t *testing.T) {
 
 	notes := "Important appointment"
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),
@@ -343,7 +343,7 @@ func TestCreateAppointment_SuccessWithNotes(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, result)
 	assert.NotEmpty(t, result.ID)
-	assert.Equal(t, "customer123", result.CustomerID)
+	assert.Equal(t, "client123", result.ClientID)
 	assert.Equal(t, "provider456", result.ProviderID)
 	assert.Equal(t, "Main", result.Branch)
 	assert.Equal(t, "scheduled", result.Status)
@@ -357,7 +357,7 @@ func TestCreateAppointment_SuccessWithoutNotes(t *testing.T) {
 	ctx := context.Background()
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),
@@ -385,7 +385,7 @@ func TestCreateAppointment_Conflict(t *testing.T) {
 	ctx := context.Background()
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),
@@ -410,7 +410,7 @@ func TestCreateAppointment_BeginTransactionFailure(t *testing.T) {
 	ctx := context.Background()
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),
@@ -431,7 +431,7 @@ func TestCreateAppointment_InsertFailure(t *testing.T) {
 	ctx := context.Background()
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),
@@ -458,7 +458,7 @@ func TestCreateAppointment_CommitFailure(t *testing.T) {
 	ctx := context.Background()
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  time.Now().Add(24 * time.Hour),

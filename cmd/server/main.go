@@ -68,7 +68,12 @@ func main() {
 
 	// Initialize services and handlers
 	apptSvc := services.NewAppointmentService(bunDB)
+	clientSvc := services.NewClientService(bunDB)
+	providerSvc := services.NewProviderService(bunDB)
+
 	apptHandler := handlers.NewAppointmentHandler(apptSvc)
+	clientHandler := handlers.NewClientHandler(clientSvc)
+	providerHandler := handlers.NewProviderHandler(providerSvc)
 	healthHandler := handlers.NewHealthHandler(bunDB)
 
 	// Initialize middlewares
@@ -78,6 +83,8 @@ func main() {
 	// Setup router
 	r := routes.NewRouter(routes.Deps{
 		AppointmentHandler: apptHandler,
+		ClientHandler:      clientHandler,
+		ProviderHandler:    providerHandler,
 		HealthHandler:      healthHandler,
 		AuthMiddleware:     authMw,
 		RateLimiter:        rateLimiter,

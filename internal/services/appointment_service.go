@@ -36,8 +36,8 @@ func (s *AppointmentService) ListAppointments(ctx context.Context, f models.Appo
 
 	query := s.db.NewSelect().Model(&list)
 
-	if f.CustomerID != "" {
-		query = query.Where("customerid = ?", f.CustomerID)
+	if f.ClientID != "" {
+		query = query.Where("clientid = ?", f.ClientID)
 	}
 	if f.ProviderID != "" {
 		query = query.Where("providerid = ?", f.ProviderID)
@@ -107,7 +107,7 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 		}
 
 		appointment = models.Appointment{
-			CustomerID: req.CustomerID,
+			ClientID:   req.ClientID,
 			ProviderID: req.ProviderID,
 			Branch:     req.Branch,
 			StartTime:  req.StartTime,

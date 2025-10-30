@@ -13,6 +13,20 @@ type AppointmentService interface {
 	CreateAppointment(ctx context.Context, req models.CreateAppointmentRequest) (*models.Appointment, error)
 }
 
+// ClientService defines the interface for client business logic.
+type ClientService interface {
+	ListClients(ctx context.Context) ([]models.Client, error)
+	GetClientByID(ctx context.Context, id string) (*models.Client, error)
+	CreateClient(ctx context.Context, req models.CreateClientRequest) (*models.Client, error)
+}
+
+// ProviderService defines the interface for provider business logic.
+type ProviderService interface {
+	ListProviders(ctx context.Context) ([]models.Provider, error)
+	GetProviderByID(ctx context.Context, id string) (*models.Provider, error)
+	CreateProvider(ctx context.Context, req models.CreateProviderRequest) (*models.Provider, error)
+}
+
 // DatabasePinger defines the interface for database health checks.
 type DatabasePinger interface {
 	PingContext(ctx context.Context) error

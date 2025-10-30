@@ -51,7 +51,7 @@ func (m *MockAppointmentService) CreateAppointment(ctx context.Context, req mode
 func TestCreate_InvalidJSON(t *testing.T) {
 	handler := NewAppointmentHandler(services.NewAppointmentService(nil))
 
-	invalidJSON := `{"customer_id": "123", "provider_id": `
+	invalidJSON := `{"client_id": "123", "provider_id": `
 	req := httptest.NewRequest("POST", "/appointments", strings.NewReader(invalidJSON))
 	rr := httptest.NewRecorder()
 
@@ -86,7 +86,7 @@ func TestCreate_MissingFields(t *testing.T) {
 	handler := NewAppointmentHandler(services.NewAppointmentService(nil))
 
 	req := models.CreateAppointmentRequest{
-		CustomerID: "123",
+		ClientID: "123",
 		// Missing other required fields
 	}
 	body, _ := json.Marshal(req)
@@ -115,7 +115,7 @@ func TestCreate_InvalidTimeRange(t *testing.T) {
 
 	now := time.Now()
 	req := models.CreateAppointmentRequest{
-		CustomerID: "123",
+		ClientID:   "123",
 		ProviderID: "456",
 		Branch:     "Main",
 		StartTime:  now,
@@ -147,7 +147,7 @@ func TestCreate_PastAppointment(t *testing.T) {
 
 	twoDaysAgo := time.Now().Add(-48 * time.Hour)
 	req := models.CreateAppointmentRequest{
-		CustomerID: "123",
+		ClientID:   "123",
 		ProviderID: "456",
 		Branch:     "Main",
 		StartTime:  twoDaysAgo,
@@ -173,7 +173,7 @@ func TestCreate_Success(t *testing.T) {
 
 	now := time.Now().Add(24 * time.Hour)
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  now,
@@ -182,7 +182,7 @@ func TestCreate_Success(t *testing.T) {
 
 	expectedAppt := &models.Appointment{
 		ID:         "appt123",
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  now,
@@ -191,7 +191,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	mockSvc.On("CreateAppointment", mock.Anything, mock.MatchedBy(func(r models.CreateAppointmentRequest) bool {
-		return r.CustomerID == "customer123" && r.ProviderID == "provider456" && r.Branch == "Main"
+		return r.ClientID == "client123" && r.ProviderID == "provider456" && r.Branch == "Main"
 	})).Return(expectedAppt, nil)
 
 	body, _ := json.Marshal(req)
@@ -206,7 +206,7 @@ func TestCreate_Success(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "appt123", response.ID)
-	assert.Equal(t, "customer123", response.CustomerID)
+	assert.Equal(t, "client123", response.ClientID)
 	mockSvc.AssertExpectations(t)
 }
 
@@ -216,7 +216,7 @@ func TestCreate_Conflict(t *testing.T) {
 
 	now := time.Now().Add(24 * time.Hour)
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  now,
@@ -248,7 +248,7 @@ func TestCreate_ServiceError(t *testing.T) {
 
 	now := time.Now().Add(24 * time.Hour)
 	req := models.CreateAppointmentRequest{
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 		StartTime:  now,
@@ -256,7 +256,7 @@ func TestCreate_ServiceError(t *testing.T) {
 	}
 
 	mockSvc.On("CreateAppointment", mock.Anything, mock.MatchedBy(func(r models.CreateAppointmentRequest) bool {
-		return r.CustomerID == "customer123"
+		return r.ClientID == "client123"
 	})).Return(nil, errors.New("database error"))
 
 	body, _ := json.Marshal(req)
@@ -282,7 +282,7 @@ func TestList_Success(t *testing.T) {
 	appointments := []models.Appointment{
 		{
 			ID:         "appt1",
-			CustomerID: "customer123",
+			ClientID:   "client123",
 			ProviderID: "provider456",
 			Branch:     "Main",
 			StartTime:  now,
@@ -291,7 +291,7 @@ func TestList_Success(t *testing.T) {
 		},
 		{
 			ID:         "appt2",
-			CustomerID: "customer456",
+			ClientID:   "client456",
 			ProviderID: "provider789",
 			Branch:     "East",
 			StartTime:  now.Add(2 * time.Hour),
@@ -301,12 +301,12 @@ func TestList_Success(t *testing.T) {
 	}
 
 	filter := models.AppointmentFilter{
-		CustomerID: "customer123",
+		ClientID: "client123",
 	}
 
 	mockSvc.On("ListAppointments", mock.Anything, filter).Return(appointments, nil)
 
-	httpReq := httptest.NewRequest("GET", "/appointments?customer_id=customer123", nil)
+	httpReq := httptest.NewRequest("GET", "/appointments?client_id=client123", nil)
 	rr := httptest.NewRecorder()
 
 	handler.List(rr, httpReq)
@@ -327,14 +327,14 @@ func TestList_WithFilters(t *testing.T) {
 
 	filter := models.AppointmentFilter{
 		Date:       "2025-10-20",
-		CustomerID: "customer123",
+		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 	}
 
 	mockSvc.On("ListAppointments", mock.Anything, filter).Return([]models.Appointment{}, nil)
 
-	httpReq := httptest.NewRequest("GET", "/appointments?date=2025-10-20&customer_id=customer123&provider_id=provider456&branch=Main", nil)
+	httpReq := httptest.NewRequest("GET", "/appointments?date=2025-10-20&client_id=client123&provider_id=provider456&branch=Main", nil)
 	rr := httptest.NewRecorder()
 
 	handler.List(rr, httpReq)
@@ -409,7 +409,7 @@ func TestGetByID_Success(t *testing.T) {
 	now := time.Now()
 	appointment := &models.Appointment{
 		ID:         "appt123",
-		CustomerID: "customer456",
+		ClientID:   "client456",
 		ProviderID: "provider789",
 		Branch:     "Main",
 		StartTime:  now,
@@ -434,7 +434,7 @@ func TestGetByID_Success(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "appt123", response.ID)
-	assert.Equal(t, "customer456", response.CustomerID)
+	assert.Equal(t, "client456", response.ClientID)
 	mockSvc.AssertExpectations(t)
 }
 

@@ -4,7 +4,7 @@ Scaffold for building appointment-driven services with Go, PostgreSQL, and Chi. 
 
 ## Features
 
-- REST API for appointments with filtering and validation
+- REST API for appointments, clients, and providers with filtering and validation
 - API key authentication plus per-key rate limiting
 - Structured JSON logging with request IDs
 - Health/readiness endpoints and graceful shutdown
@@ -41,9 +41,19 @@ podman compose down
 - `GET /ready` – readiness (checks database)
 
 ### Appointments (requires `X-API-Key`)
-- `GET /appointments?date=YYYY-MM-DD&customer_id=&provider_id=&branch=`
+- `GET /appointments?date=YYYY-MM-DD&client_id=&provider_id=&branch=`
 - `GET /appointments/{id}`
 - `POST /appointments`
+
+### Clients (requires `X-API-Key`)
+- `GET /clients`
+- `GET /clients/{id}`
+- `POST /clients`
+
+### Providers (requires `X-API-Key`)
+- `GET /providers`
+- `GET /providers/{id}`
+- `POST /providers`
 
 ### Sample Request
 

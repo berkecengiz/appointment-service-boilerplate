@@ -29,7 +29,7 @@ func NewAppointmentHandler(svc AppointmentService) *AppointmentHandler {
 // @Accept json
 // @Produce json
 // @Param date query string false "Filter by date (YYYY-MM-DD)"
-// @Param customer_id query string false "Filter by customer identifier"
+// @Param client_id query string false "Filter by client identifier"
 // @Param provider_id query string false "Filter by provider identifier"
 // @Param branch query string false "Filter by branch"
 // @Success 200 {array} models.Appointment
@@ -38,7 +38,7 @@ func NewAppointmentHandler(svc AppointmentService) *AppointmentHandler {
 // @Security ApiKeyAuth
 // @Router /appointments [get]
 // List handles GET /appointments and returns filtered appointments.
-// Query parameters: date (YYYY-MM-DD), customer_id, provider_id, branch.
+// Query parameters: date (YYYY-MM-DD), client_id, provider_id, branch.
 func (h *AppointmentHandler) List(w http.ResponseWriter, r *http.Request) {
 	date := r.URL.Query().Get("date")
 	if date != "" {
@@ -50,7 +50,7 @@ func (h *AppointmentHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	filter := models.AppointmentFilter{
 		Date:       date,
-		CustomerID: r.URL.Query().Get("customer_id"),
+		ClientID:   r.URL.Query().Get("client_id"),
 		ProviderID: r.URL.Query().Get("provider_id"),
 		Branch:     r.URL.Query().Get("branch"),
 	}
@@ -104,14 +104,14 @@ func (h *AppointmentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Security ApiKeyAuth
 // @Router /appointments [post]
 // Create handles POST /appointments and creates a new appointment.
-// Request body should contain customer_id, provider_id, branch, start_time, end_time, and optional notes.
+// Request body should contain client_id, provider_id, branch, start_time, end_time, and optional notes.
 func (h *AppointmentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateAppointmentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httputil.Error(r.Context(), w, http.StatusBadRequest, "invalid request body", err)
 		return
 	}
-	if req.CustomerID == "" || req.ProviderID == "" || req.Branch == "" || req.StartTime.IsZero() || req.EndTime.IsZero() {
+	if req.ClientID == "" || req.ProviderID == "" || req.Branch == "" || req.StartTime.IsZero() || req.EndTime.IsZero() {
 		httputil.Error(r.Context(), w, http.StatusBadRequest, "missing required fields", nil)
 		return
 	}
