@@ -1,6 +1,6 @@
 # Binaries
 appointment-service
-server
+/server
 *.exe
 *.exe~
 *.dll
