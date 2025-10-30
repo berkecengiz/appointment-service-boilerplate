@@ -334,6 +334,8 @@ func TestCreateAppointment_SuccessWithNotes(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
 	mock.ExpectExec("INSERT").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
@@ -367,6 +369,8 @@ func TestCreateAppointment_SuccessWithoutNotes(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
 	mock.ExpectExec("INSERT").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
@@ -394,6 +398,8 @@ func TestCreateAppointment_Conflict(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
 	mock.ExpectRollback()
 
@@ -401,6 +407,31 @@ func TestCreateAppointment_Conflict(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrAppointmentConflict)
+	assert.Nil(t, result)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestCreateAppointment_ClientConflict(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	req := models.CreateAppointmentRequest{
+		ClientID:   "client123",
+		ProviderID: "provider456",
+		Branch:     "Main",
+		StartTime:  time.Now().Add(24 * time.Hour),
+		EndTime:    time.Now().Add(25 * time.Hour),
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
+	mock.ExpectRollback()
+
+	result, err := svc.CreateAppointment(ctx, req)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrClientAlreadyBooked)
 	assert.Nil(t, result)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -441,6 +472,8 @@ func TestCreateAppointment_InsertFailure(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
 	mock.ExpectExec("INSERT").
 		WillReturnError(errors.New("insert failed"))
 	mock.ExpectRollback()
@@ -466,6 +499,8 @@ func TestCreateAppointment_CommitFailure(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
 	mock.ExpectExec("INSERT").

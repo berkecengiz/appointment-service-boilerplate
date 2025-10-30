@@ -17,6 +17,8 @@ type ProviderService struct {
 	db *bun.DB
 }
 
+var ErrProviderEmailExists = errors.New("provider email already exists")
+
 // NewProviderService constructs a provider service using the given database connection.
 func NewProviderService(db *bun.DB) *ProviderService {
 	return &ProviderService{db: db}
@@ -63,6 +65,9 @@ func (s *ProviderService) CreateProvider(ctx context.Context, req models.CreateP
 	}
 
 	if _, err := s.db.NewInsert().Model(&provider).Returning("").Exec(ctx); err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrProviderEmailExists
+		}
 		return nil, fmt.Errorf("insert provider: %w", err)
 	}
 	return &provider, nil

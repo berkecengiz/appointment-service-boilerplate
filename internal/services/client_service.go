@@ -17,6 +17,8 @@ type ClientService struct {
 	db *bun.DB
 }
 
+var ErrClientEmailExists = errors.New("client email already exists")
+
 // NewClientService creates a client service with the provided database connection.
 func NewClientService(db *bun.DB) *ClientService {
 	return &ClientService{db: db}
@@ -63,6 +65,9 @@ func (s *ClientService) CreateClient(ctx context.Context, req models.CreateClien
 	}
 
 	if _, err := s.db.NewInsert().Model(&client).Returning("").Exec(ctx); err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrClientEmailExists
+		}
 		return nil, fmt.Errorf("insert client: %w", err)
 	}
 	return &client, nil

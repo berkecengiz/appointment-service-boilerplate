@@ -18,7 +18,10 @@ type AppointmentService struct {
 }
 
 // ErrAppointmentConflict indicates the requested slot overlaps an existing appointment.
-var ErrAppointmentConflict = errors.New("appointment overlaps with existing booking")
+var (
+	ErrAppointmentConflict = errors.New("appointment overlaps with existing booking")
+	ErrClientAlreadyBooked = errors.New("client already has an appointment on this date")
+)
 
 // NewAppointmentService creates a new appointment service with the given database connection.
 func NewAppointmentService(db *bun.DB) *AppointmentService {
@@ -89,6 +92,26 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	var appointment models.Appointment
 
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		startOfDay := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), 0, 0, 0, 0, req.StartTime.Location())
+		endOfDay := startOfDay.Add(24 * time.Hour)
+
+		clientBooked, err := tx.NewSelect().Model((*models.Appointment)(nil)).
+			Where("clientid = ?", req.ClientID).
+			Where("status <> 'cancelled'").
+			Where("starttime >= ?", startOfDay).
+			Where("starttime < ?", endOfDay).
+			Exists(ctx)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				clientBooked = false
+			} else {
+				return fmt.Errorf("check client availability: %w", err)
+			}
+		}
+		if clientBooked {
+			return ErrClientAlreadyBooked
+		}
+
 		exists, err := tx.NewSelect().Model((*models.Appointment)(nil)).
 			Where("providerid = ?", req.ProviderID).
 			Where("status <> 'cancelled'").
@@ -127,6 +150,9 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	})
 	if errors.Is(err, ErrAppointmentConflict) {
 		return nil, ErrAppointmentConflict
+	}
+	if errors.Is(err, ErrClientAlreadyBooked) {
+		return nil, ErrClientAlreadyBooked
 	}
 	if err != nil {
 		return nil, err

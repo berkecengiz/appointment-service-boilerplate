@@ -11,7 +11,7 @@ type Client struct {
 	// Name is the client's full name.
 	Name string `bun:"name" json:"name"`
 	// Email is the client's preferred contact email.
-	Email string `bun:"email" json:"email"`
+	Email string `bun:"email,unique" json:"email"`
 	// Phone is the client's contact phone number.
 	Phone string `bun:"phone" json:"phone"`
 	// Address is the client's mailing address.

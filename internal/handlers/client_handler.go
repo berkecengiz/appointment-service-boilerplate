@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/httputil"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -89,6 +91,10 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.svc.CreateClient(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, services.ErrClientEmailExists) {
+			httputil.Error(r.Context(), w, http.StatusConflict, "client email already exists", err)
+			return
+		}
 		httputil.InternalError(r.Context(), w, err)
 		return
 	}

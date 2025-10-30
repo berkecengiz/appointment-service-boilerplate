@@ -19,6 +19,18 @@ func init() {
 				return err
 			}
 
+			if _, err := db.ExecContext(ctx, `ALTER TABLE clients ADD CONSTRAINT clients_email_key UNIQUE (email)`); err != nil {
+				if !strings.Contains(err.Error(), "already exists") {
+					return err
+				}
+			}
+
+			if _, err := db.ExecContext(ctx, `ALTER TABLE providers ADD CONSTRAINT providers_email_key UNIQUE (email)`); err != nil {
+				if !strings.Contains(err.Error(), "already exists") {
+					return err
+				}
+			}
+
 			if _, err := db.ExecContext(ctx, `ALTER TABLE appointments RENAME COLUMN customerid TO clientid`); err != nil {
 				if !strings.Contains(err.Error(), "does not exist") {
 					return err
@@ -52,6 +64,14 @@ func init() {
 				if !strings.Contains(err.Error(), "does not exist") {
 					return err
 				}
+			}
+
+			if _, err := db.ExecContext(ctx, `ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_email_key`); err != nil {
+				return err
+			}
+
+			if _, err := db.ExecContext(ctx, `ALTER TABLE providers DROP CONSTRAINT IF EXISTS providers_email_key`); err != nil {
+				return err
 			}
 
 			if _, err := db.NewDropTable().Model((*models.Provider)(nil)).IfExists().Exec(ctx); err != nil {

@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/httputil"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -89,6 +91,10 @@ func (h *ProviderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	provider, err := h.svc.CreateProvider(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, services.ErrProviderEmailExists) {
+			httputil.Error(r.Context(), w, http.StatusConflict, "provider email already exists", err)
+			return
+		}
 		httputil.InternalError(r.Context(), w, err)
 		return
 	}

@@ -11,7 +11,7 @@ type Provider struct {
 	// Name is the provider's display name.
 	Name string `bun:"name" json:"name"`
 	// Email is the provider's contact email.
-	Email string `bun:"email" json:"email"`
+	Email string `bun:"email,unique" json:"email"`
 	// Phone is the provider's contact phone number.
 	Phone string `bun:"phone" json:"phone"`
 	// Address is the provider's business address.

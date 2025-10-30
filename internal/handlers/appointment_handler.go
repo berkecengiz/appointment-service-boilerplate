@@ -122,6 +122,10 @@ func (h *AppointmentHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	a, err := h.svc.CreateAppointment(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, services.ErrClientAlreadyBooked) {
+			httputil.Error(r.Context(), w, http.StatusConflict, "client already has an appointment on this date", err)
+			return
+		}
 		if errors.Is(err, services.ErrAppointmentConflict) {
 			httputil.Error(r.Context(), w, http.StatusConflict, "provider unavailable for requested time", err)
 			return

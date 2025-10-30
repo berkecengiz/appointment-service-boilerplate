@@ -210,7 +210,7 @@ func TestCreate_Success(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
-func TestCreate_Conflict(t *testing.T) {
+func TestCreate_ProviderConflict(t *testing.T) {
 	mockSvc := new(MockAppointmentService)
 	handler := NewAppointmentHandler(mockSvc)
 
@@ -239,6 +239,38 @@ func TestCreate_Conflict(t *testing.T) {
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "provider unavailable for requested time", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCreate_ClientConflict(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	now := time.Now().Add(24 * time.Hour)
+	req := models.CreateAppointmentRequest{
+		ClientID:   "client123",
+		ProviderID: "provider456",
+		Branch:     "Main",
+		StartTime:  now,
+		EndTime:    now.Add(time.Hour),
+	}
+
+	mockSvc.On("CreateAppointment", mock.Anything, mock.MatchedBy(func(r models.CreateAppointmentRequest) bool {
+		return r.ClientID == "client123"
+	})).Return(nil, services.ErrClientAlreadyBooked)
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/appointments", bytes.NewReader(body))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, httpReq)
+
+	assert.Equal(t, http.StatusConflict, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "client already has an appointment on this date", response["error"])
 	mockSvc.AssertExpectations(t)
 }
 
