@@ -49,18 +49,27 @@ func main() {
 	slog.Info("starting hms-service", "port", cfg.ServerPort, "log_level", cfg.LogLevel)
 
 	// Connect to database
-	pgdb, err := db.NewPostgres(cfg)
+	bunDB, err := db.NewPostgres(cfg)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer pgdb.Close()
+	defer bunDB.Close()
 	slog.Info("database connected successfully")
 
+	// Run database migrations at startup to ensure schema is current.
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer migrateCancel()
+	if err := db.RunMigrations(migrateCtx, bunDB); err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("database migrations applied")
+
 	// Initialize services and handlers
-	apptSvc := services.NewAppointmentService(pgdb)
+	apptSvc := services.NewAppointmentService(bunDB)
 	apptHandler := handlers.NewAppointmentHandler(apptSvc)
-	healthHandler := handlers.NewHealthHandler(pgdb)
+	healthHandler := handlers.NewHealthHandler(bunDB)
 
 	// Initialize middlewares
 	authMw := middlewares.NewAPIKeyMiddleware(cfg.APIKeys)

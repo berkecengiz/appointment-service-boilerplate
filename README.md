@@ -8,6 +8,7 @@ Scaffold for building appointment-driven services with Go, PostgreSQL, and Chi. 
 - API key authentication plus per-key rate limiting
 - Structured JSON logging with request IDs
 - Health/readiness endpoints and graceful shutdown
+- Bun ORM with auto-applied migrations on startup
 - Parameterized queries against PostgreSQL
 - Example Podman Compose setup for local/production use
 

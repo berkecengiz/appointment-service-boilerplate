@@ -210,6 +210,38 @@ func TestCreate_Success(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
+func TestCreate_Conflict(t *testing.T) {
+	mockSvc := new(MockAppointmentService)
+	handler := NewAppointmentHandler(mockSvc)
+
+	now := time.Now().Add(24 * time.Hour)
+	req := models.CreateAppointmentRequest{
+		CustomerID: "customer123",
+		ProviderID: "provider456",
+		Branch:     "Main",
+		StartTime:  now,
+		EndTime:    now.Add(time.Hour),
+	}
+
+	mockSvc.On("CreateAppointment", mock.Anything, mock.MatchedBy(func(r models.CreateAppointmentRequest) bool {
+		return r.ProviderID == "provider456"
+	})).Return(nil, services.ErrAppointmentConflict)
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("POST", "/appointments", bytes.NewReader(body))
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, httpReq)
+
+	assert.Equal(t, http.StatusConflict, rr.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rr.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "provider unavailable for requested time", response["error"])
+	mockSvc.AssertExpectations(t)
+}
+
 func TestCreate_ServiceError(t *testing.T) {
 	mockSvc := new(MockAppointmentService)
 	handler := NewAppointmentHandler(mockSvc)

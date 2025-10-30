@@ -5,19 +5,23 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/google/uuid"
+	"github.com/uptrace/bun"
 )
 
 // AppointmentService provides business logic for appointment operations.
 type AppointmentService struct {
-	db *sql.DB
+	db *bun.DB
 }
 
+// ErrAppointmentConflict indicates the requested slot overlaps an existing appointment.
+var ErrAppointmentConflict = errors.New("appointment overlaps with existing booking")
+
 // NewAppointmentService creates a new appointment service with the given database connection.
-func NewAppointmentService(db *sql.DB) *AppointmentService {
+func NewAppointmentService(db *bun.DB) *AppointmentService {
 	return &AppointmentService{db: db}
 }
 
@@ -28,64 +32,34 @@ func (s *AppointmentService) ListAppointments(ctx context.Context, f models.Appo
 	defer cancel()
 
 	// Build query with proper parameterization to prevent SQL injection
-	base := "SELECT Id, CustomerId, ProviderId, Branch, StartTime, EndTime, Status, Notes FROM Appointments"
-	var conditions []string
-	var args []any
-	argIndex := 1
+	var list []models.Appointment
+
+	query := s.db.NewSelect().Model(&list)
 
 	if f.CustomerID != "" {
-		conditions = append(conditions, fmt.Sprintf("CustomerId = $%d", argIndex))
-		args = append(args, f.CustomerID)
-		argIndex++
+		query = query.Where("customerid = ?", f.CustomerID)
 	}
 	if f.ProviderID != "" {
-		conditions = append(conditions, fmt.Sprintf("ProviderId = $%d", argIndex))
-		args = append(args, f.ProviderID)
-		argIndex++
+		query = query.Where("providerid = ?", f.ProviderID)
 	}
 	if f.Branch != "" {
-		conditions = append(conditions, fmt.Sprintf("Branch = $%d", argIndex))
-		args = append(args, f.Branch)
-		argIndex++
+		query = query.Where("branch = ?", f.Branch)
 	}
 	if f.Date != "" {
 		// Expecting YYYY-MM-DD - validate format
 		start, err := time.Parse("2006-01-02", f.Date)
 		if err == nil {
 			end := start.Add(24 * time.Hour)
-			conditions = append(conditions, fmt.Sprintf("StartTime >= $%d AND StartTime < $%d", argIndex, argIndex+1))
-			args = append(args, start)
-			args = append(args, end)
+			query = query.Where("starttime >= ?", start).Where("starttime < ?", end)
 		}
 	}
 
-	query := base
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
-	query += " ORDER BY StartTime ASC"
+	query = query.OrderExpr("starttime ASC")
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
-	if err != nil {
+	if err := query.Scan(ctx); err != nil {
 		return nil, fmt.Errorf("query appointments: %w", err)
 	}
-	defer rows.Close()
 
-	var list []models.Appointment
-	for rows.Next() {
-		var a models.Appointment
-		var notes sql.NullString
-		if err := rows.Scan(&a.ID, &a.CustomerID, &a.ProviderID, &a.Branch, &a.StartTime, &a.EndTime, &a.Status, &notes); err != nil {
-			return nil, fmt.Errorf("scan appointment: %w", err)
-		}
-		if notes.Valid {
-			a.Notes = &notes.String
-		}
-		list = append(list, a)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate appointments: %w", err)
-	}
 	return list, nil
 }
 
@@ -95,18 +69,13 @@ func (s *AppointmentService) GetAppointmentByID(ctx context.Context, id string) 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	const q = "SELECT Id, CustomerId, ProviderId, Branch, StartTime, EndTime, Status, Notes FROM Appointments WHERE Id = $1"
 	var a models.Appointment
-	var notes sql.NullString
-	err := s.db.QueryRowContext(ctx, q, id).Scan(&a.ID, &a.CustomerID, &a.ProviderID, &a.Branch, &a.StartTime, &a.EndTime, &a.Status, &notes)
+	err := s.db.NewSelect().Model(&a).Where("id = ?", id).Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query appointment by id: %w", err)
-	}
-	if notes.Valid {
-		a.Notes = &notes.String
 	}
 	return &a, nil
 }
@@ -117,40 +86,51 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	var appointment models.Appointment
+
+	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		exists, err := tx.NewSelect().Model((*models.Appointment)(nil)).
+			Where("providerid = ?", req.ProviderID).
+			Where("status <> 'cancelled'").
+			Where("endtime > ?", req.StartTime).
+			Where("starttime < ?", req.EndTime).
+			Exists(ctx)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				exists = false
+			} else {
+				return fmt.Errorf("check provider availability: %w", err)
+			}
+		}
+		if exists {
+			return ErrAppointmentConflict
+		}
+
+		appointment = models.Appointment{
+			CustomerID: req.CustomerID,
+			ProviderID: req.ProviderID,
+			Branch:     req.Branch,
+			StartTime:  req.StartTime,
+			EndTime:    req.EndTime,
+			Status:     "scheduled",
+			Notes:      req.Notes,
+		}
+
+		if appointment.ID == "" {
+			appointment.ID = uuid.NewString()
+		}
+
+		if _, err := tx.NewInsert().Model(&appointment).Returning("").Exec(ctx); err != nil {
+			return fmt.Errorf("insert appointment: %w", err)
+		}
+		return nil
+	})
+	if errors.Is(err, ErrAppointmentConflict) {
+		return nil, ErrAppointmentConflict
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = tx.Rollback() }()
 
-	const q = `INSERT INTO Appointments (CustomerId, ProviderId, Branch, StartTime, EndTime, Status, Notes)
-               VALUES ($1, $2, $3, $4, $5, 'scheduled', $6)
-               RETURNING Id`
-
-	var id string
-	if err := tx.QueryRowContext(ctx, q,
-		req.CustomerID,
-		req.ProviderID,
-		req.Branch,
-		req.StartTime,
-		req.EndTime,
-		req.Notes,
-	).Scan(&id); err != nil {
-		return nil, fmt.Errorf("insert appointment: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &models.Appointment{
-		ID:         id,
-		CustomerID: req.CustomerID,
-		ProviderID: req.ProviderID,
-		Branch:     req.Branch,
-		StartTime:  req.StartTime,
-		EndTime:    req.EndTime,
-		Status:     "scheduled",
-		Notes:      req.Notes,
-	}, nil
+	return &appointment, nil
 }

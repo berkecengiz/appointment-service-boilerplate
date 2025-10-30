@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/httputil"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
+	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -97,6 +99,7 @@ func (h *AppointmentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Success 201 {object} models.Appointment
 // @Failure 400 {object} httputil.ErrorResponse
 // @Failure 422 {object} httputil.ErrorResponse
+// @Failure 409 {object} httputil.ErrorResponse
 // @Failure 500 {object} httputil.ErrorResponse
 // @Security ApiKeyAuth
 // @Router /appointments [post]
@@ -119,6 +122,10 @@ func (h *AppointmentHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	a, err := h.svc.CreateAppointment(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, services.ErrAppointmentConflict) {
+			httputil.Error(r.Context(), w, http.StatusConflict, "provider unavailable for requested time", err)
+			return
+		}
 		httputil.InternalError(r.Context(), w, err)
 		return
 	}
