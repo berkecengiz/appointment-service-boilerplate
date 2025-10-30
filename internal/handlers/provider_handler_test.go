@@ -11,6 +11,7 @@ import (
 
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/models"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/services"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -109,6 +110,109 @@ func TestProviderHandler_CreateServerError(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	handler.Create(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+func TestProviderHandler_ListSuccess(t *testing.T) {
+	svc := &stubProviderService{
+		listFn: func(ctx context.Context) ([]models.Provider, error) {
+			return []models.Provider{
+				{ID: "1", Name: "Alpha", Email: "alpha@example.com"},
+				{ID: "2", Name: "Beta", Email: "beta@example.com"},
+			}, nil
+		},
+	}
+	handler := NewProviderHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/providers", nil)
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var resp []models.Provider
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Len(t, resp, 2)
+}
+
+func TestProviderHandler_ListError(t *testing.T) {
+	svc := &stubProviderService{
+		listFn: func(ctx context.Context) ([]models.Provider, error) {
+			return nil, errors.New("query failed")
+		},
+	}
+	handler := NewProviderHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/providers", nil)
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Code)
+}
+
+func TestProviderHandler_GetByIDSuccess(t *testing.T) {
+	svc := &stubProviderService{
+		getFn: func(ctx context.Context, id string) (*models.Provider, error) {
+			return &models.Provider{ID: id, Name: "Alpha", Email: "alpha@example.com"}, nil
+		},
+	}
+	handler := NewProviderHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/providers/1", nil)
+	rr := httptest.NewRecorder()
+
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("id", "1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+
+	handler.GetByID(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var resp models.Provider
+	assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	assert.Equal(t, "1", resp.ID)
+}
+
+func TestProviderHandler_GetByIDNotFound(t *testing.T) {
+	svc := &stubProviderService{
+		getFn: func(ctx context.Context, id string) (*models.Provider, error) {
+			return nil, nil
+		},
+	}
+	handler := NewProviderHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/providers/1", nil)
+	rr := httptest.NewRecorder()
+
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("id", "1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+
+	handler.GetByID(rr, req)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestProviderHandler_GetByIDError(t *testing.T) {
+	svc := &stubProviderService{
+		getFn: func(ctx context.Context, id string) (*models.Provider, error) {
+			return nil, errors.New("query failed")
+		},
+	}
+	handler := NewProviderHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/providers/1", nil)
+	rr := httptest.NewRecorder()
+
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("id", "1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+
+	handler.GetByID(rr, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
