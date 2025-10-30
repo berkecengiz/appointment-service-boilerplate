@@ -1,0 +1,215 @@
+basePath: /
+definitions:
+  httputil.ErrorResponse:
+    properties:
+      error:
+        type: string
+      request_id:
+        type: string
+    type: object
+  models.Appointment:
+    properties:
+      branch:
+        description: Branch denotes the location or branch where the appointment takes
+          place.
+        type: string
+      customer_id:
+        description: CustomerID identifies the customer associated with the appointment.
+        type: string
+      end_time:
+        description: EndTime marks when the appointment is expected to finish.
+        type: string
+      id:
+        description: ID is the unique identifier of the appointment.
+        type: string
+      notes:
+        description: Notes contains optional remarks about the appointment.
+        type: string
+      provider_id:
+        description: ProviderID identifies the service provider assigned to the appointment.
+        type: string
+      start_time:
+        description: StartTime marks when the appointment begins.
+        type: string
+      status:
+        description: Status represents the current status of the appointment (e.g.,
+          scheduled, cancelled).
+        type: string
+    type: object
+  models.CreateAppointmentRequest:
+    properties:
+      branch:
+        description: Branch specifies where the appointment will happen.
+        type: string
+      customer_id:
+        description: CustomerID identifies the customer this appointment is for.
+        type: string
+      end_time:
+        description: EndTime indicates when the appointment should end.
+        type: string
+      notes:
+        description: Notes optionally contains additional information about the appointment.
+        type: string
+      provider_id:
+        description: ProviderID identifies the provider fulfilling the appointment.
+        type: string
+      start_time:
+        description: StartTime indicates when the appointment should begin.
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API for managing appointments, availability, and health checks.
+  title: Appointment Service API
+  version: "1.0"
+paths:
+  /appointments:
+    get:
+      consumes:
+      - application/json
+      description: Returns appointments filtered by optional query parameters.
+      parameters:
+      - description: Filter by date (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      - description: Filter by customer identifier
+        in: query
+        name: customer_id
+        type: string
+      - description: Filter by provider identifier
+        in: query
+        name: provider_id
+        type: string
+      - description: Filter by branch
+        in: query
+        name: branch
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Appointment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List appointments
+      tags:
+      - appointments
+    post:
+      consumes:
+      - application/json
+      description: Creates a new appointment with the provided payload.
+      parameters:
+      - description: Appointment payload
+        in: body
+        name: appointment
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Appointment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create appointment
+      tags:
+      - appointments
+  /appointments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a single appointment by its identifier.
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Appointment'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get appointment by ID
+      tags:
+      - appointments
+  /health:
+    get:
+      description: Returns 200 OK when the service process is running.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Check service liveness
+      tags:
+      - health
+  /ready:
+    get:
+      description: Returns 200 OK when dependencies (database) respond in time.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
+      summary: Check service readiness
+      tags:
+      - health
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

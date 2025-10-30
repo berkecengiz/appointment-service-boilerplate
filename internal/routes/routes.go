@@ -8,6 +8,7 @@ import (
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 const (
@@ -37,6 +38,9 @@ func NewRouter(d Deps) *chi.Mux {
 	// Health endpoints (no auth required)
 	r.Get("/health", d.HealthHandler.Liveness)
 	r.Get("/ready", d.HealthHandler.Readiness)
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	r.Group(func(pr chi.Router) {
 		pr.Use(d.AuthMiddleware)

@@ -116,7 +116,7 @@ func TestError_WithInternalError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "internal server error", response.Error)
@@ -141,7 +141,7 @@ func TestError_WithoutInternalError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "missing required fields", response.Error)
@@ -162,7 +162,7 @@ func TestError_IncludesRequestID(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "test-request-id", response.RequestID)
@@ -207,7 +207,7 @@ func TestError_SanitizesMessage(t *testing.T) {
 	// Verify JSON content type
 	assert.Contains(t, rr.Header().Get("Content-Type"), "application/json")
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -227,7 +227,7 @@ func TestInternalError_CallsError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "internal server error", response.Error)
@@ -251,7 +251,7 @@ func TestInternalError_UsesGenericMessage(t *testing.T) {
 
 	InternalError(ctx, rr, specificErr)
 
-	var response errorResponse
+	var response ErrorResponse
 	err := json.Unmarshal(rr.Body.Bytes(), &response)
 	require.NoError(t, err)
 
@@ -284,7 +284,7 @@ func TestError_DifferentStatusCodes(t *testing.T) {
 
 			assert.Equal(t, tc.statusCode, rr.Code)
 
-			var response errorResponse
+			var response ErrorResponse
 			err := json.Unmarshal(rr.Body.Bytes(), &response)
 			require.NoError(t, err)
 			assert.Equal(t, tc.message, response.Error)

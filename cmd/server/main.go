@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	docs "github.com/berkecengiz/appointment-service-boilerplate/docs"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/config"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/db"
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/handlers"
@@ -28,7 +29,15 @@ const (
 	shutdownTimeout  = 10 * time.Second
 )
 
+// @title Appointment Service API
+// @version 1.0
+// @description API for managing appointments, availability, and health checks.
+// @BasePath /
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
 func main() {
+	docs.SwaggerInfo.BasePath = "/"
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

@@ -20,6 +20,21 @@ func NewAppointmentHandler(svc AppointmentService) *AppointmentHandler {
 	return &AppointmentHandler{svc: svc}
 }
 
+// List godoc
+// @Summary List appointments
+// @Description Returns appointments filtered by optional query parameters.
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param date query string false "Filter by date (YYYY-MM-DD)"
+// @Param customer_id query string false "Filter by customer identifier"
+// @Param provider_id query string false "Filter by provider identifier"
+// @Param branch query string false "Filter by branch"
+// @Success 200 {array} models.Appointment
+// @Failure 400 {object} httputil.ErrorResponse
+// @Failure 500 {object} httputil.ErrorResponse
+// @Security ApiKeyAuth
+// @Router /appointments [get]
 // List handles GET /appointments and returns filtered appointments.
 // Query parameters: date (YYYY-MM-DD), customer_id, provider_id, branch.
 func (h *AppointmentHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +60,18 @@ func (h *AppointmentHandler) List(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, list)
 }
 
+// GetByID godoc
+// @Summary Get appointment by ID
+// @Description Retrieves a single appointment by its identifier.
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param id path string true "Appointment ID"
+// @Success 200 {object} models.Appointment
+// @Failure 404 {object} httputil.ErrorResponse
+// @Failure 500 {object} httputil.ErrorResponse
+// @Security ApiKeyAuth
+// @Router /appointments/{id} [get]
 // GetByID handles GET /appointments/{id} and returns a specific appointment.
 func (h *AppointmentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -60,6 +87,19 @@ func (h *AppointmentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, a)
 }
 
+// Create godoc
+// @Summary Create appointment
+// @Description Creates a new appointment with the provided payload.
+// @Tags appointments
+// @Accept json
+// @Produce json
+// @Param appointment body models.CreateAppointmentRequest true "Appointment payload"
+// @Success 201 {object} models.Appointment
+// @Failure 400 {object} httputil.ErrorResponse
+// @Failure 422 {object} httputil.ErrorResponse
+// @Failure 500 {object} httputil.ErrorResponse
+// @Security ApiKeyAuth
+// @Router /appointments [post]
 // Create handles POST /appointments and creates a new appointment.
 // Request body should contain customer_id, provider_id, branch, start_time, end_time, and optional notes.
 func (h *AppointmentHandler) Create(w http.ResponseWriter, r *http.Request) {

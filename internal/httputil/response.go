@@ -9,7 +9,8 @@ import (
 	"github.com/berkecengiz/appointment-service-boilerplate/internal/middlewares"
 )
 
-type errorResponse struct {
+// ErrorResponse represents the JSON error envelope returned to API consumers.
+type ErrorResponse struct {
 	Error     string `json:"error"`
 	RequestID string `json:"request_id,omitempty"`
 }
@@ -49,7 +50,7 @@ func Error(ctx context.Context, w http.ResponseWriter, status int, message strin
 		)
 	}
 
-	response := errorResponse{
+	response := ErrorResponse{
 		Error:     message,
 		RequestID: requestID,
 	}

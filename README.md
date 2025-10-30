@@ -51,6 +51,12 @@ curl -H "X-API-Key: demo" \
   "http://localhost:8080/appointments?date=2024-05-01"
 ```
 
+## API Docs
+
+- Install the generator once: `go install github.com/swaggo/swag/cmd/swag@latest`
+- Regenerate docs after handler/model changes: `$(go env GOPATH)/bin/swag init -g cmd/server/main.go -o docs`
+- Browse Swagger UI at `http://localhost:8080/swagger/index.html`
+
 ## Configuration
 
 Required variables in `.env`:
