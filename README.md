@@ -74,6 +74,7 @@ curl -H "X-API-Key: demo" \
 ```bash
 make build            # compile binaries
 make test             # run unit tests
+make test-coverage    # run tests with coverage report (generates coverage.html)
 make fmt              # gofmt cmd/ and internal/
 make swagger          # regenerate docs (depends on swag)
 make run              # start the server locally

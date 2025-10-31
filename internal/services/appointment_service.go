@@ -17,17 +17,17 @@ type AppointmentService struct {
 	db *bun.DB
 }
 
-// ErrAppointmentConflict indicates the requested slot overlaps an existing appointment.
-const (
-	statusCancelled = "cancelled"
-)
-
+// Service-level errors
 var (
 	ErrAppointmentConflict         = errors.New("appointment overlaps with existing booking")
 	ErrClientAlreadyBooked         = errors.New("client already has an appointment on this date")
 	ErrAppointmentNotFound         = errors.New("appointment not found")
 	ErrAppointmentAlreadyCancelled = errors.New("appointment already cancelled")
 	ErrAppointmentForbidden        = errors.New("appointment not owned by client")
+	ErrClientNotFound              = errors.New("client not found")
+	ErrProviderNotFound            = errors.New("provider not found")
+	ErrInvalidStatus               = errors.New("invalid appointment status")
+	ErrInvalidStatusTransition     = errors.New("invalid status transition")
 )
 
 // NewAppointmentService creates a new appointment service with the given database connection.
@@ -36,8 +36,9 @@ func NewAppointmentService(db *bun.DB) *AppointmentService {
 }
 
 // ListAppointments retrieves appointments from the database with optional filtering.
-// Filters can be applied by date, customer ID, provider ID, and branch.
-func (s *AppointmentService) ListAppointments(ctx context.Context, f models.AppointmentFilter) ([]models.Appointment, error) {
+// Filters can be applied by date, customer ID, provider ID, branch, status, and date range.
+// Returns appointments and total count for pagination.
+func (s *AppointmentService) ListAppointments(ctx context.Context, f models.AppointmentFilter) ([]models.Appointment, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -55,6 +56,9 @@ func (s *AppointmentService) ListAppointments(ctx context.Context, f models.Appo
 	if f.Branch != "" {
 		query = query.Where("branch = ?", f.Branch)
 	}
+	if f.Status != "" {
+		query = query.Where("status = ?", f.Status)
+	}
 	if f.Date != "" {
 		// Expecting YYYY-MM-DD - validate format
 		start, err := time.Parse("2006-01-02", f.Date)
@@ -63,14 +67,41 @@ func (s *AppointmentService) ListAppointments(ctx context.Context, f models.Appo
 			query = query.Where("starttime >= ?", start).Where("starttime < ?", end)
 		}
 	}
+	// Handle date range filters
+	if f.StartDate != "" {
+		start, err := time.Parse("2006-01-02", f.StartDate)
+		if err == nil {
+			query = query.Where("starttime >= ?", start)
+		}
+	}
+	if f.EndDate != "" {
+		end, err := time.Parse("2006-01-02", f.EndDate)
+		if err == nil {
+			query = query.Where("starttime < ?", end)
+		}
+	}
+
+	// Get total count before applying pagination
+	total, err := query.Count(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count appointments: %w", err)
+	}
+
+	// Apply pagination
+	if f.Limit > 0 {
+		query = query.Limit(f.Limit)
+	}
+	if f.Offset > 0 {
+		query = query.Offset(f.Offset)
+	}
 
 	query = query.OrderExpr("starttime ASC")
 
 	if err := query.Scan(ctx); err != nil {
-		return nil, fmt.Errorf("query appointments: %w", err)
+		return nil, 0, fmt.Errorf("query appointments: %w", err)
 	}
 
-	return list, nil
+	return list, total, nil
 }
 
 // GetAppointmentByID retrieves a single appointment by its ID.
@@ -99,6 +130,28 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	var appointment models.Appointment
 
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// Check if client exists
+		clientExists, err := tx.NewSelect().Model((*models.Client)(nil)).
+			Where("id = ?", req.ClientID).
+			Exists(ctx)
+		if err != nil {
+			return fmt.Errorf("check client existence: %w", err)
+		}
+		if !clientExists {
+			return ErrClientNotFound
+		}
+
+		// Check if provider exists
+		providerExists, err := tx.NewSelect().Model((*models.Provider)(nil)).
+			Where("id = ?", req.ProviderID).
+			Exists(ctx)
+		if err != nil {
+			return fmt.Errorf("check provider existence: %w", err)
+		}
+		if !providerExists {
+			return ErrProviderNotFound
+		}
+
 		startOfDay := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), 0, 0, 0, 0, req.StartTime.Location())
 		endOfDay := startOfDay.Add(24 * time.Hour)
 
@@ -142,7 +195,7 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 			Branch:     req.Branch,
 			StartTime:  req.StartTime,
 			EndTime:    req.EndTime,
-			Status:     "scheduled",
+			Status:     models.StatusScheduled,
 			Notes:      req.Notes,
 		}
 
@@ -155,6 +208,12 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 		}
 		return nil
 	})
+	if errors.Is(err, ErrClientNotFound) {
+		return nil, ErrClientNotFound
+	}
+	if errors.Is(err, ErrProviderNotFound) {
+		return nil, ErrProviderNotFound
+	}
 	if errors.Is(err, ErrAppointmentConflict) {
 		return nil, ErrAppointmentConflict
 	}
@@ -168,36 +227,125 @@ func (s *AppointmentService) CreateAppointment(ctx context.Context, req models.C
 	return &appointment, nil
 }
 
-// CancelAppointment marks an appointment as cancelled if it belongs to the requesting client.
-func (s *AppointmentService) CancelAppointment(ctx context.Context, id string, req models.CancelAppointmentRequest) (*models.Appointment, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+// UpdateAppointment updates an existing appointment's time and/or notes.
+func (s *AppointmentService) UpdateAppointment(ctx context.Context, id string, req models.UpdateAppointmentRequest) (*models.Appointment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
 	var appointment models.Appointment
 
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// Fetch current appointment
 		if err := tx.NewSelect().Model(&appointment).Where("id = ?", id).For("UPDATE").Scan(ctx); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrAppointmentNotFound
 			}
-			return fmt.Errorf("query appointment for cancel: %w", err)
+			return fmt.Errorf("query appointment for update: %w", err)
 		}
 
+		// Check ownership
 		if appointment.ClientID != req.ClientID {
 			return ErrAppointmentForbidden
 		}
 
-		if appointment.Status == statusCancelled {
-			return ErrAppointmentAlreadyCancelled
+		// Track what's being updated
+		columnsToUpdate := []string{}
+
+		// Handle status update
+		if req.Status != nil {
+			if !models.ValidateStatus(*req.Status) {
+				return ErrInvalidStatus
+			}
+			// Validate status transitions
+			if appointment.Status == models.StatusCancelled && *req.Status != models.StatusCancelled {
+				return ErrInvalidStatusTransition
+			}
+			if appointment.Status == models.StatusCompleted && *req.Status == models.StatusScheduled {
+				return ErrInvalidStatusTransition
+			}
+			appointment.Status = *req.Status
+			columnsToUpdate = append(columnsToUpdate, "status")
 		}
 
-		appointment.Status = statusCancelled
+		// Handle time updates
+		newStartTime := appointment.StartTime
+		newEndTime := appointment.EndTime
+		timesChanged := false
 
-		if _, err := tx.NewUpdate().Model(&appointment).
-			Column("status").
-			Where("id = ?", id).
-			Exec(ctx); err != nil {
-			return fmt.Errorf("update appointment status: %w", err)
+		if req.StartTime != nil {
+			newStartTime = *req.StartTime
+			timesChanged = true
+			columnsToUpdate = append(columnsToUpdate, "starttime")
+		}
+		if req.EndTime != nil {
+			newEndTime = *req.EndTime
+			timesChanged = true
+			columnsToUpdate = append(columnsToUpdate, "endtime")
+		}
+
+		// Validate time range if times are changing
+		if timesChanged {
+			if !newEndTime.After(newStartTime) {
+				return fmt.Errorf("end time must be after start time")
+			}
+
+			// Check if the appointment date has changed (either time field could cause this)
+			oldDate := time.Date(appointment.StartTime.Year(), appointment.StartTime.Month(), appointment.StartTime.Day(), 0, 0, 0, 0, appointment.StartTime.Location())
+			newDate := time.Date(newStartTime.Year(), newStartTime.Month(), newStartTime.Day(), 0, 0, 0, 0, newStartTime.Location())
+
+			// Check if client already has another appointment on the new date if date changed
+			if !oldDate.Equal(newDate) {
+				startOfDay := newDate
+				endOfDay := startOfDay.Add(24 * time.Hour)
+
+				clientBooked, err := tx.NewSelect().Model((*models.Appointment)(nil)).
+					Where("clientid = ?", appointment.ClientID).
+					Where("id <> ?", id).
+					Where("status <> ?", models.StatusCancelled).
+					Where("starttime >= ?", startOfDay).
+					Where("starttime < ?", endOfDay).
+					Exists(ctx)
+				if err != nil {
+					return fmt.Errorf("check client availability: %w", err)
+				}
+				if clientBooked {
+					return ErrClientAlreadyBooked
+				}
+			}
+
+			// Check provider availability for new time slot
+			exists, err := tx.NewSelect().Model((*models.Appointment)(nil)).
+				Where("providerid = ?", appointment.ProviderID).
+				Where("id <> ?", id).
+				Where("status <> ?", models.StatusCancelled).
+				Where("endtime > ?", newStartTime).
+				Where("starttime < ?", newEndTime).
+				Exists(ctx)
+			if err != nil {
+				return fmt.Errorf("check provider availability: %w", err)
+			}
+			if exists {
+				return ErrAppointmentConflict
+			}
+
+			appointment.StartTime = newStartTime
+			appointment.EndTime = newEndTime
+		}
+
+		// Handle notes update
+		if req.Notes != nil {
+			appointment.Notes = req.Notes
+			columnsToUpdate = append(columnsToUpdate, "notes")
+		}
+
+		// Only update if there are changes
+		if len(columnsToUpdate) > 0 {
+			if _, err := tx.NewUpdate().Model(&appointment).
+				Column(columnsToUpdate...).
+				Where("id = ?", id).
+				Exec(ctx); err != nil {
+				return fmt.Errorf("update appointment: %w", err)
+			}
 		}
 
 		return nil
@@ -206,10 +354,13 @@ func (s *AppointmentService) CancelAppointment(ctx context.Context, id string, r
 	if err != nil {
 		if errors.Is(err, ErrAppointmentNotFound) ||
 			errors.Is(err, ErrAppointmentForbidden) ||
-			errors.Is(err, ErrAppointmentAlreadyCancelled) {
+			errors.Is(err, ErrClientAlreadyBooked) ||
+			errors.Is(err, ErrAppointmentConflict) ||
+			errors.Is(err, ErrInvalidStatus) ||
+			errors.Is(err, ErrInvalidStatusTransition) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("cancel appointment: %w", err)
+		return nil, fmt.Errorf("update appointment: %w", err)
 	}
 
 	return &appointment, nil

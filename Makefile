@@ -1,7 +1,7 @@
 GOPATH := $(shell go env GOPATH)
 SWAG := $(GOPATH)/bin/swag
 
-.PHONY: build run test tidy fmt swagger swagger-install docs compose-up compose-down compose-logs
+.PHONY: build run test test-coverage tidy fmt swagger swagger-install docs compose-up compose-down compose-logs
 
 build:
 	go build ./...
@@ -11,6 +11,11 @@ run:
 
 test:
 	go test ./...
+
+test-coverage:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 tidy:
 	go mod tidy

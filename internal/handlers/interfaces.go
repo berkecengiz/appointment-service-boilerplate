@@ -8,10 +8,10 @@ import (
 
 // AppointmentService defines the interface for appointment business logic.
 type AppointmentService interface {
-	ListAppointments(ctx context.Context, filter models.AppointmentFilter) ([]models.Appointment, error)
+	ListAppointments(ctx context.Context, filter models.AppointmentFilter) ([]models.Appointment, int, error)
 	GetAppointmentByID(ctx context.Context, id string) (*models.Appointment, error)
 	CreateAppointment(ctx context.Context, req models.CreateAppointmentRequest) (*models.Appointment, error)
-	CancelAppointment(ctx context.Context, id string, req models.CancelAppointmentRequest) (*models.Appointment, error)
+	UpdateAppointment(ctx context.Context, id string, req models.UpdateAppointmentRequest) (*models.Appointment, error)
 }
 
 // ClientService defines the interface for client business logic.

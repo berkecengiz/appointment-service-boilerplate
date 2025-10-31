@@ -36,13 +36,6 @@ definitions:
           scheduled, cancelled).
         type: string
     type: object
-  models.CancelAppointmentRequest:
-    properties:
-      client_id:
-        description: ClientID ensures only the owner of the appointment can cancel
-          it.
-        type: string
-    type: object
   models.Client:
     properties:
       address:
@@ -120,6 +113,24 @@ definitions:
         type: string
       phone:
         description: Phone is the provider's contact phone number.
+        type: string
+    type: object
+  models.UpdateAppointmentRequest:
+    properties:
+      client_id:
+        description: ClientID ensures only the owner can update status-related fields.
+        type: string
+      end_time:
+        description: EndTime optionally updates when the appointment should end.
+        type: string
+      notes:
+        description: Notes optionally updates additional information about the appointment.
+        type: string
+      start_time:
+        description: StartTime optionally updates when the appointment should begin.
+        type: string
+      status:
+        description: Status optionally updates the appointment status.
         type: string
     type: object
 info:
@@ -242,23 +253,22 @@ paths:
       summary: Get appointment by ID
       tags:
       - appointments
-  /appointments/{id}/cancel:
-    post:
+    put:
       consumes:
       - application/json
-      description: Cancels an existing appointment owned by the requesting client.
+      description: Updates an existing appointment's time, notes, or status.
       parameters:
       - description: Appointment ID
         in: path
         name: id
         required: true
         type: string
-      - description: Cancel payload
+      - description: Update payload
         in: body
-        name: cancel
+        name: update
         required: true
         schema:
-          $ref: '#/definitions/models.CancelAppointmentRequest'
+          $ref: '#/definitions/models.UpdateAppointmentRequest'
       produces:
       - application/json
       responses:
@@ -282,13 +292,17 @@ paths:
           description: Conflict
           schema:
             $ref: '#/definitions/httputil.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/httputil.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/httputil.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Cancel appointment
+      summary: Update appointment
       tags:
       - appointments
   /clients:

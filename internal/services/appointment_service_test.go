@@ -34,17 +34,19 @@ func TestListAppointments_FilterByClientID(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("1", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{ClientID: "client123"}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.Equal(t, "client123", result[0].ClientID)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -54,17 +56,19 @@ func TestListAppointments_FilterByProviderID(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("2", "client999", "provider456", "West", now, now.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{ProviderID: "provider456"}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.Equal(t, "provider456", result[0].ProviderID)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -74,17 +78,19 @@ func TestListAppointments_FilterByBranch(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("3", "client111", "provider222", "East", now, now.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{Branch: "East"}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.Equal(t, "East", result[0].Branch)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -94,17 +100,19 @@ func TestListAppointments_FilterByDate(t *testing.T) {
 	ctx := context.Background()
 
 	targetDate := time.Date(2025, 10, 20, 0, 0, 0, 0, time.UTC)
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("4", "client555", "provider666", "North", targetDate, targetDate.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{Date: "2025-10-20"}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -112,16 +120,18 @@ func TestListAppointments_InvalidDateFormat(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(0)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{Date: "invalid-date"}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
+	assert.Equal(t, 0, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -130,21 +140,23 @@ func TestListAppointments_MultipleFilters(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("5", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{
 		ClientID:   "client123",
 		ProviderID: "provider456",
 		Branch:     "Main",
 	}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -153,18 +165,20 @@ func TestListAppointments_NoFilters(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(2)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("6", "client1", "provider1", "Main", now, now.Add(time.Hour), "scheduled", nil).
 		AddRow("7", "client2", "provider2", "East", now, now.Add(time.Hour), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
+	assert.Equal(t, 2, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -172,15 +186,16 @@ func TestListAppointments_QueryError(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
-	mock.ExpectQuery("SELECT").
+	mock.ExpectQuery("SELECT count").
 		WillReturnError(errors.New("database connection lost"))
 
 	filter := models.AppointmentFilter{}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "query appointments")
+	assert.Equal(t, 0, total)
+	assert.Contains(t, err.Error(), "count appointments")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -188,19 +203,21 @@ func TestListAppointments_ScanError(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("1", "client123", "provider456", "Main", "invalid", time.Now(), "scheduled", nil)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "query appointments")
 	}
 	assert.Nil(t, result)
+	assert.Equal(t, 0, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -208,16 +225,18 @@ func TestListAppointments_EmptyResult(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(0)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"})
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
+	assert.Equal(t, 0, total)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -227,17 +246,19 @@ func TestListAppointments_WithNotes(t *testing.T) {
 
 	now := time.Now()
 	notes := "Important appointment"
+	countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("8", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", notes)
 
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT count").WillReturnRows(countRows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	filter := models.AppointmentFilter{}
-	result, err := svc.ListAppointments(ctx, filter)
+	result, total, err := svc.ListAppointments(ctx, filter)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+	assert.Equal(t, 1, total)
 	assert.NotNil(t, result[0].Notes)
 	assert.Equal(t, notes, *result[0].Notes)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -332,12 +353,15 @@ func TestCreateAppointment_SuccessWithNotes(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectExec("INSERT").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	// Provider availability check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -367,12 +391,15 @@ func TestCreateAppointment_SuccessWithoutNotes(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectExec("INSERT").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	// Provider availability check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -397,10 +424,14 @@ func TestCreateAppointment_Conflict(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	// Provider availability check - conflict
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
 	mock.ExpectRollback()
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -424,8 +455,12 @@ func TestCreateAppointment_ClientConflict(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check - conflict
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(1))
 	mock.ExpectRollback()
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -470,12 +505,15 @@ func TestCreateAppointment_InsertFailure(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectExec("INSERT").
-		WillReturnError(errors.New("insert failed"))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	// Provider availability check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectExec("INSERT").WillReturnError(errors.New("insert failed"))
 	mock.ExpectRollback()
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -499,12 +537,15 @@ func TestCreateAppointment_CommitFailure(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(sqlmock.NewRows([]string{"exists"}))
-	mock.ExpectExec("INSERT").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	// Client existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Provider existence check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+	// Client already booked check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	// Provider availability check
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"exists"}))
+	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit().WillReturnError(errors.New("commit failed"))
 
 	result, err := svc.CreateAppointment(ctx, req)
@@ -514,49 +555,47 @@ func TestCreateAppointment_CommitFailure(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestCancelAppointment_Success(t *testing.T) {
+func TestUpdateAppointment_StatusChange(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
 	now := time.Now()
+	cancelled := models.StatusCancelled
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
-	mock.ExpectExec("UPDATE").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	req := models.CancelAppointmentRequest{ClientID: "client123"}
-
-	result, err := svc.CancelAppointment(ctx, "appt123", req)
+	req := models.UpdateAppointmentRequest{ClientID: "client123", Status: &cancelled}
+	result, err := svc.UpdateAppointment(ctx, "appt123", req)
 
 	assert.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, "appt123", result.ID)
-	assert.Equal(t, "cancelled", result.Status)
+	assert.Equal(t, models.StatusCancelled, result.Status)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestCancelAppointment_NotFound(t *testing.T) {
+func TestUpdateAppointment_NotFound(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
 	mock.ExpectRollback()
 
-	_, err := svc.CancelAppointment(ctx, "missing", models.CancelAppointmentRequest{ClientID: "client123"})
+	req := models.UpdateAppointmentRequest{ClientID: "client123"}
+	_, err := svc.UpdateAppointment(ctx, "missing", req)
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrAppointmentNotFound)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestCancelAppointment_Forbidden(t *testing.T) {
+func TestUpdateAppointment_Forbidden(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
@@ -565,71 +604,72 @@ func TestCancelAppointment_Forbidden(t *testing.T) {
 		AddRow("appt123", "other-client", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 	mock.ExpectRollback()
 
-	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+	req := models.UpdateAppointmentRequest{ClientID: "client123"}
+	_, err := svc.UpdateAppointment(ctx, "appt123", req)
 
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrAppointmentForbidden)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestCancelAppointment_AlreadyCancelled(t *testing.T) {
+func TestUpdateAppointment_InvalidStatus(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
-		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "cancelled", nil)
-
-	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
-	mock.ExpectRollback()
-
-	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrAppointmentAlreadyCancelled)
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestCancelAppointment_UpdateFailure(t *testing.T) {
-	svc, mock := newAppointmentServiceWithMock(t)
-	ctx := context.Background()
-
-	now := time.Now()
+	invalidStatus := "invalid"
 	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
 		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnRows(rows)
-	mock.ExpectExec("UPDATE").
-		WillReturnError(errors.New("update failed"))
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 	mock.ExpectRollback()
 
-	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+	req := models.UpdateAppointmentRequest{ClientID: "client123", Status: &invalidStatus}
+	_, err := svc.UpdateAppointment(ctx, "appt123", req)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cancel appointment")
+	assert.ErrorIs(t, err, ErrInvalidStatus)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestCancelAppointment_SelectFailure(t *testing.T) {
+func TestUpdateAppointment_UpdateFailure(t *testing.T) {
+	svc, mock := newAppointmentServiceWithMock(t)
+	ctx := context.Background()
+
+	now := time.Now()
+	notes := "Updated notes"
+	rows := sqlmock.NewRows([]string{"id", "clientid", "providerid", "branch", "starttime", "endtime", "status", "notes"}).
+		AddRow("appt123", "client123", "provider456", "Main", now, now.Add(time.Hour), "scheduled", nil)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectExec("UPDATE").WillReturnError(errors.New("update failed"))
+	mock.ExpectRollback()
+
+	req := models.UpdateAppointmentRequest{ClientID: "client123", Notes: &notes}
+	_, err := svc.UpdateAppointment(ctx, "appt123", req)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "update appointment")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateAppointment_SelectFailure(t *testing.T) {
 	svc, mock := newAppointmentServiceWithMock(t)
 	ctx := context.Background()
 
 	mock.ExpectBegin()
-	mock.ExpectQuery("SELECT").
-		WillReturnError(errors.New("select failed"))
+	mock.ExpectQuery("SELECT").WillReturnError(errors.New("select failed"))
 	mock.ExpectRollback()
 
-	_, err := svc.CancelAppointment(ctx, "appt123", models.CancelAppointmentRequest{ClientID: "client123"})
+	req := models.UpdateAppointmentRequest{ClientID: "client123"}
+	_, err := svc.UpdateAppointment(ctx, "appt123", req)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cancel appointment")
+	assert.Contains(t, err.Error(), "update appointment")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

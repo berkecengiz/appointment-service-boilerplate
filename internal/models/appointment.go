@@ -6,6 +6,29 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// Appointment status constants
+const (
+	StatusScheduled  = "scheduled"
+	StatusCancelled  = "cancelled"
+	StatusCompleted  = "completed"
+	StatusNoShow     = "no_show"
+	StatusInProgress = "in_progress"
+)
+
+// ValidStatuses is a map of all valid appointment statuses
+var ValidStatuses = map[string]bool{
+	StatusScheduled:  true,
+	StatusCancelled:  true,
+	StatusCompleted:  true,
+	StatusNoShow:     true,
+	StatusInProgress: true,
+}
+
+// ValidateStatus checks if a status string is valid
+func ValidateStatus(s string) bool {
+	return ValidStatuses[s]
+}
+
 // Appointment captures persisted appointment information.
 type Appointment struct {
 	bun.BaseModel `bun:"table:appointments" swaggerignore:"true"`
@@ -38,6 +61,16 @@ type AppointmentFilter struct {
 	ProviderID string
 	// Branch optionally filters appointments by branch.
 	Branch string
+	// Status optionally filters appointments by status.
+	Status string
+	// StartDate optionally filters appointments starting from this date (YYYY-MM-DD).
+	StartDate string
+	// EndDate optionally filters appointments before this date (YYYY-MM-DD).
+	EndDate string
+	// Limit specifies the maximum number of results to return.
+	Limit int
+	// Offset specifies the number of results to skip.
+	Offset int
 }
 
 // CreateAppointmentRequest defines the request body for creating an appointment.
@@ -56,8 +89,16 @@ type CreateAppointmentRequest struct {
 	Notes *string `json:"notes,omitempty"`
 }
 
-// CancelAppointmentRequest defines the request body for cancelling an appointment.
-type CancelAppointmentRequest struct {
-	// ClientID ensures only the owner of the appointment can cancel it.
+// UpdateAppointmentRequest defines the request body for updating an appointment.
+type UpdateAppointmentRequest struct {
+	// StartTime optionally updates when the appointment should begin.
+	StartTime *time.Time `json:"start_time,omitempty"`
+	// EndTime optionally updates when the appointment should end.
+	EndTime *time.Time `json:"end_time,omitempty"`
+	// Notes optionally updates additional information about the appointment.
+	Notes *string `json:"notes,omitempty"`
+	// Status optionally updates the appointment status.
+	Status *string `json:"status,omitempty"`
+	// ClientID ensures only the owner can update status-related fields.
 	ClientID string `json:"client_id"`
 }

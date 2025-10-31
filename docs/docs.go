@@ -192,16 +192,14 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/appointments/{id}/cancel": {
-            "post": {
+            },
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Cancels an existing appointment owned by the requesting client.",
+                "description": "Updates an existing appointment's time, notes, or status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -211,7 +209,7 @@ const docTemplate = `{
                 "tags": [
                     "appointments"
                 ],
-                "summary": "Cancel appointment",
+                "summary": "Update appointment",
                 "parameters": [
                     {
                         "type": "string",
@@ -221,12 +219,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Cancel payload",
-                        "name": "cancel",
+                        "description": "Update payload",
+                        "name": "update",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CancelAppointmentRequest"
+                            "$ref": "#/definitions/models.UpdateAppointmentRequest"
                         }
                     }
                 ],
@@ -257,6 +255,12 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httputil.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
                         "schema": {
                             "$ref": "#/definitions/httputil.ErrorResponse"
                         }
@@ -642,15 +646,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CancelAppointmentRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "description": "ClientID ensures only the owner of the appointment can cancel it.",
-                    "type": "string"
-                }
-            }
-        },
         "models.Client": {
             "type": "object",
             "properties": {
@@ -760,6 +755,31 @@ const docTemplate = `{
                 },
                 "phone": {
                     "description": "Phone is the provider's contact phone number.",
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateAppointmentRequest": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "description": "ClientID ensures only the owner can update status-related fields.",
+                    "type": "string"
+                },
+                "end_time": {
+                    "description": "EndTime optionally updates when the appointment should end.",
+                    "type": "string"
+                },
+                "notes": {
+                    "description": "Notes optionally updates additional information about the appointment.",
+                    "type": "string"
+                },
+                "start_time": {
+                    "description": "StartTime optionally updates when the appointment should begin.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status optionally updates the appointment status.",
                     "type": "string"
                 }
             }
